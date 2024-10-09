@@ -3,6 +3,10 @@
 This project starts as a fork of [fradelg/docker-mysql-cron-backup](https://github.com/fradelg/docker-mysql-cron-backup) but for Oracle's Mysql.
 Motivated by some recent changes on mysql 8.4 where using mariadb-dump with `--master-data` will not work as `SHOW MASTER STATUS` has been removed in favor of `SHOW BINLOG STATUS`.
 
+Changes from parent project:
+
+ - removed restore capabilities (aim for simplicity and low maintenance)
+
 # mysql-cron-backup
 
 Run mysqldump to backup your databases periodically using the cron task manager in the container. Your backups are saved in `/backup`. You can mount any directory of your host or a docker volumes in /backup. Othwerwise, a docker volume is created in the default location.
@@ -22,7 +26,7 @@ docker container run -d \
 
 
 Healthcheck is provided as a basic init control.
-Container is **Healthy** after the database init phase, that is after `INIT_BACKUP` or `INIT_RESTORE_LATEST` happends without check if there is an error, **Starting** otherwise. Not other checks are actually provided.
+Container is **Healthy** after the database init phase, that is after `INIT_BACKUP` happends without check if there is an error, **Starting** otherwise. Not other checks are actually provided.
 
 ## Variables
 
@@ -41,11 +45,10 @@ Container is **Healthy** after the database init phase, that is after `INIT_BACK
 - `CRON_TIME`: The interval of cron job to run mysqldump. `0 3 * * sun` by default, which is every Sunday at 03:00. It uses UTC timezone.
 - `MAX_BACKUPS`: The number of backups to keep. When reaching the limit, the old backup will be discarded. No limit by default.
 - `INIT_BACKUP`: If set, create a backup when the container starts.
-- `INIT_RESTORE_LATEST`: If set, restores latest backup.
 - `EXIT_BACKUP`: If set, create a backup when the container stops.
 - `TIMEOUT`: Wait a given number of seconds for the database to be ready and make the first backup, `10s` by default. After that time, the initial attempt for backup gives up and only the Cron job will try to make a backup.
 - `GZIP_LEVEL`: Specify the level of gzip compression from 1 (quickest, least compressed) to 9 (slowest, most compressed), default is 6.
-- `USE_PLAIN_SQL`: If set, back up and restore plain SQL files without gzip.
+- `USE_PLAIN_SQL`: If set, back up plain SQL files without gzip.
 - `TZ`: Specify TIMEZONE in Container. E.g. "Europe/Berlin". Default is UTC.
 
 If you want to make this image the perfect companion of your MySQL container, use [docker-compose](https://docs.docker.com/compose/). You can add more services that will be able to connect to the MySQL image using the name `my_mariadb`, note that you only expose the port `3306` internally to the servers and not to the host:
@@ -62,8 +65,6 @@ services:
       - 3306
     volumes:
       - data:/var/lib/mysql
-      # If there is not scheme, restore the last created backup (if exists)
-      - ${VOLUME_PATH}/backup/latest.${DATABASE_NAME}.sql.gz:/docker-entrypoint-initdb.d/database.sql.gz
     environment:
       - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
       - MYSQL_DATABASE=${DATABASE_NAME}
@@ -164,99 +165,6 @@ volumes:
 
 ```
 
-## Restore from a backup
+### Automatic backup on container starts and stops
 
-### List all available backups :
-
-See the list of backups in your running docker container, just write in your favorite terminal:
-
-```bash
-docker container exec <your_mysql_backup_container_name> ls /backup
-```
-
-### Restore using a compose file
-
-To restore a database from a certain backup you may have to specify the database name in the variable MYSQL_DATABASE:
-
-```YAML
-mysql-cron-backup:
-    image: fradelg/mysql-cron-backup
-    command: "/restore.sh /backup/201708060500.${DATABASE_NAME}.sql.gz"
-    depends_on:
-      - mariadb
-    volumes:
-      - ${VOLUME_PATH}/backup:/backup
-    environment:
-      - MYSQL_HOST=my_mariadb
-      - MYSQL_USER=root
-      - MYSQL_PASS=${MARIADB_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${DATABASE_NAME}
-```
-### Restore using a docker command
-
-```bash
-docker container exec <your_mysql_backup_container_name> /restore.sh /backup/<your_sql_backup_gz_file>
-```
-
-if no database name is specified, `restore.sh` will try to find the database name from the backup file.
-
-### Automatic backup and restore on container starts and stops
-
-Set `INIT_RESTORE_LATEST` to automatic restore the last backup on startup.
 Set `EXIT_BACKUP` to automatic create a last backup on shutdown.
-
-```yaml
-  mysql-cron-backup:
-    image: fradelg/mysql-cron-backup
-    depends_on:
-      - mariadb
-    volumes:
-      - ${VOLUME_PATH}/backup:/backup
-    environment:
-      - MYSQL_HOST=my_mariadb
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASS=${MYSQL_PASSWORD}
-      - MAX_BACKUPS=15
-      - INIT_RESTORE_LATEST=1
-      - EXIT_BACKUP=1
-      # Every day at 03:00
-      - CRON_TIME=0 3 * * *
-      # Make it small
-      - GZIP_LEVEL=9
-    restart: unless-stopped
-
-volumes:
-  data:
-```
-
-Docker database image could expose a directory you could add files as init sql script.
-
-```yaml
-  mysql:
-    image: mysql
-    expose:
-      - 3306
-    volumes:
-      - data:/var/lib/mysql
-      # If there is not scheme, restore using the init script (if exists)
-      - ./init-script.sql:/docker-entrypoint-initdb.d/database.sql.gz
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${DATABASE_NAME}
-    restart: unless-stopped
-```
-
-```yaml
-  mariadb:
-    image: mariadb
-    expose:
-      - 3306
-    volumes:
-      - data:/var/lib/mysql
-      # If there is not scheme, restore using the init script (if exists)
-      - ./init-script.sql:/docker-entrypoint-initdb.d/database.sql.gz
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${DATABASE_NAME}
-    restart: unless-stopped
-```
