@@ -20,7 +20,7 @@ docker container run -d \
        --env MYSQL_PASS=my_password \
        --link mysql
        --volume /path/to/my/backup/folder:/backup
-       fradelg/mysql-cron-backup
+       ghcr.io/codiumteam/mysql-cron-backup:8.4-v1
 ```
 
 ### Healthcheck
