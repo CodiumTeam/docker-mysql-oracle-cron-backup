@@ -1,30 +1,19 @@
-FROM golang:1.20.4-alpine3.18 AS binary
-RUN apk -U add openssl git
+ARG MYSQL_VERSION=8.4
 
-ARG DOCKERIZE_VERSION=v0.7.0
-WORKDIR /go/src/github.com/jwilder
-RUN git clone https://github.com/jwilder/dockerize.git && \
-    cd dockerize && \
-    git checkout ${DOCKERIZE_VERSION}
+FROM ubuntu:latest AS dockerize-installer
+ARG DOCKERIZE_VERSION=0.8.0
+WORKDIR /tmp
+RUN apt-get update && apt-get install wget -y
+RUN wget -O dockerize.tar.gz \
+    https://github.com/jwilder/dockerize/releases/download/v${DOCKERIZE_VERSION}/dockerize-linux-$(dpkg --print-architecture)-v${DOCKERIZE_VERSION}.tar.gz \
+    && tar -xzf dockerize.tar.gz
 
-WORKDIR /go/src/github.com/jwilder/dockerize
-ENV GO111MODULE=on
-RUN go mod tidy
-RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -a -o /go/bin/dockerize .
 
-FROM alpine:3.20.3
-LABEL maintainer "Fco. Javier Delgado del Hoyo <frandelhoyo@gmail.com>"
+FROM mysql:${MYSQL_VERSION}
+MAINTAINER "Hugo Chinchilla <hugo@codium.team>"
 
-RUN apk add --update \
-        tzdata \
-        bash \
-        mysql-client \
-        gzip \
-        openssl \
-        mariadb-connector-c && \
-    rm -rf /var/cache/apk/*
-
-COPY --from=binary /go/bin/dockerize /usr/local/bin
+COPY --from=dockerize-installer /tmp/dockerize /usr/local/bin
+COPY --from=webdevops/go-crond:23.12.0-debian /usr/local/bin/go-crond /usr/local/bin/go-crond
 
 ENV CRON_TIME="0 3 * * sun" \
     MYSQL_HOST="mysql" \
@@ -32,16 +21,15 @@ ENV CRON_TIME="0 3 * * sun" \
     TIMEOUT="10s" \
     MYSQLDUMP_OPTS="--quick"
 
-COPY ["run.sh", "backup.sh", "/delete.sh", "/"]
-RUN mkdir /backup && \
-    chmod 777 /backup && \ 
-    chmod 755 /run.sh /backup.sh /delete.sh && \
-    touch /mysql_backup.log && \
-    chmod 666 /mysql_backup.log
+RUN mkdir /app /backup
+COPY ["run.sh", "backup.sh", "delete.sh", "/app/"]
+RUN chmod 777 /backup && \
+    chmod 755 /app/run.sh /app/backup.sh /app/delete.sh
 
 VOLUME ["/backup"]
+WORKDIR /app
 
 HEALTHCHECK --interval=2s --retries=1800 \
-	CMD stat /HEALTHY.status || exit 1
+	CMD stat /app/HEALTHY.status || exit 1
 
-CMD dockerize -wait tcp://${MYSQL_HOST}:${MYSQL_PORT} -timeout ${TIMEOUT} /run.sh
+CMD dockerize -wait tcp://${MYSQL_HOST}:${MYSQL_PORT} -timeout ${TIMEOUT} /app/run.sh
