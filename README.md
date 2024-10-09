@@ -6,6 +6,7 @@ Motivated by some recent changes on mysql 8.4 where using mariadb-dump with `--m
 Changes from parent project:
 
  - removed restore capabilities (aim for simplicity and low maintenance)
+ - uses go-crond as cron daemon
 
 # mysql-cron-backup
 
