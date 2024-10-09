@@ -24,7 +24,6 @@ docker container run -d \
 
 ### Healthcheck
 
-
 Healthcheck is provided as a basic init control.
 Container is **Healthy** after the database init phase, that is after `INIT_BACKUP` happends without check if there is an error, **Starting** otherwise. Not other checks are actually provided.
 
@@ -50,8 +49,3 @@ Container is **Healthy** after the database init phase, that is after `INIT_BACK
 - `GZIP_LEVEL`: Specify the level of gzip compression from 1 (quickest, least compressed) to 9 (slowest, most compressed), default is 6.
 - `USE_PLAIN_SQL`: If set, back up plain SQL files without gzip.
 - `TZ`: Specify TIMEZONE in Container. E.g. "Europe/Berlin". Default is UTC.
-
-
-### Automatic backup on container starts and stops
-
-Set `EXIT_BACKUP` to automatic create a last backup on shutdown.
