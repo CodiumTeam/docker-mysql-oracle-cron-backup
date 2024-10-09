@@ -1,3 +1,8 @@
+### Project origin and motivation
+
+This project starts as a fork of [fradelg/docker-mysql-cron-backup](https://github.com/fradelg/docker-mysql-cron-backup) but for Oracle's Mysql.
+Motivated by some recent changes on mysql 8.4 where using mariadb-dump with `--master-data` will not work as `SHOW MASTER STATUS` has been removed in favor of `SHOW BINLOG STATUS`.
+
 # mysql-cron-backup
 
 Run mysqldump to backup your databases periodically using the cron task manager in the container. Your backups are saved in `/backup`. You can mount any directory of your host or a docker volumes in /backup. Othwerwise, a docker volume is created in the default location.
