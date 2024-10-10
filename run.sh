@@ -21,5 +21,5 @@ touch HEALTHY.status
 
 echo "${CRON_TIME} /app/backup.sh" > /tmp/crontab.conf
 echo "=> Running cron task manager in foreground"
-go-crond --verbose --allow-unprivileged mysql:/tmp/crontab.conf
+go-crond --verbose root:/tmp/crontab.conf
 echo "Script is shutted down."
