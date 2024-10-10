@@ -1,0 +1,39 @@
+stages:
+  - test
+  - publish
+
+shellcheck:
+  only:
+    - master
+  stage: test
+  image: ubuntu:latest
+  script:
+    - apt-get -qq update && sudo apt-get install -y devscripts shellcheck
+    - make test
+
+test-backup:
+  only:
+    - master
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:20.10.16
+  services:
+    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:18.09.7-dind
+      alias: docker
+  stage: test
+  script:
+    - docker compose up -d --wait mysql
+    - docker compose run backup /app/backup.sh
+    - docker compose stop
+    - test -f backup/latest.example.sql.gz
+
+publish:
+  only:
+    - tags
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:20.10.16
+  services:
+    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:18.09.7-dind
+      alias: docker
+  stage: publish
+  script:
+    - echo "$CI_JOB_TOKEN" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+    - docker build -t ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME} .
+    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_NAME}
