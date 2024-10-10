@@ -14,9 +14,9 @@ shellcheck:
 test-backup:
   only:
     - master
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:20.10.16
+  image: docker:27.3.1
   services:
-    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:18.09.7-dind
+    - name: docker:27.3.1-dind
       alias: docker
   stage: test
   script:
@@ -28,9 +28,9 @@ test-backup:
 publish:
   only:
     - tags
-  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:20.10.16
+  image: docker:27.3.1
   services:
-    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:18.09.7-dind
+    - name: docker:27.3.1-dind
       alias: docker
   stage: publish
   script:
