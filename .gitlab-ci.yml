@@ -8,7 +8,7 @@ shellcheck:
   stage: test
   image: ubuntu:latest
   script:
-    - apt-get -qq update && sudo apt-get install -y devscripts shellcheck
+    - apt-get -qq update && apt-get install -y devscripts shellcheck
     - make test
 
 test-backup:
